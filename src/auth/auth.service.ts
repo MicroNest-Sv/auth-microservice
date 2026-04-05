@@ -38,7 +38,9 @@ export class AuthService {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: _, ...userWithoutPassword } = user;
 
-      return userWithoutPassword;
+      const token = await this.jwtService.signAsync(userWithoutPassword);
+
+      return { user: userWithoutPassword, token };
     } catch (error) {
       if (error instanceof RpcException) throw error;
 
