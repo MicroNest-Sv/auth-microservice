@@ -88,7 +88,9 @@ export class AuthService {
 
       throw new RpcException({
         status: HttpStatus.INTERNAL_SERVER_ERROR,
-        messages: [error instanceof Error ? error.message : 'Error al iniciar sesión'],
+        messages: [
+          error instanceof Error ? error.message : 'Error al iniciar sesión',
+        ],
       });
     }
   }
@@ -104,7 +106,7 @@ export class AuthService {
         });
       }
 
-      const payload = await this.jwtService.verifyAsync(token);
+      const payload = await this.jwtService.verifyAsync<{ id: string }>(token);
 
       const user = await this.prisma.user.findUnique({
         where: { id: payload.id },
