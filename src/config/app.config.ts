@@ -8,6 +8,7 @@ const appEnvSchema = z.object({
   NATS_SERVERS: z
     .string()
     .transform((str) => str.split(',').map((s) => s.trim())),
+  JWT_SECRET: z.string().min(1),
 });
 
 type AppEnv = z.infer<typeof appEnvSchema>;
@@ -15,6 +16,7 @@ type AppEnv = z.infer<typeof appEnvSchema>;
 export interface AppConfig {
   databaseUrl: string;
   natsServers: string[];
+  jwtSecret: string;
 }
 
 export default registerAs('app', (): AppConfig => {
@@ -27,5 +29,6 @@ export default registerAs('app', (): AppConfig => {
   return {
     databaseUrl: env.DATABASE_URL,
     natsServers: env.NATS_SERVERS,
+    jwtSecret: env.JWT_SECRET,
   };
 });

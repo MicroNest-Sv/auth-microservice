@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
-import * as bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 
 import { PrismaService } from '@src/common/services';
 
@@ -8,7 +9,10 @@ import { SignUpDto, SignInDto } from './dto';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   async signUp(signUpDto: SignUpDto) {
     try {
@@ -40,14 +44,51 @@ export class AuthService {
 
       throw new RpcException({
         status: HttpStatus.INTERNAL_SERVER_ERROR,
-        messages: ['Error al registrar usuario'],
+        messages: [
+          error instanceof Error ? error.message : 'Error al registrar usuario',
+        ],
       });
     }
   }
 
-  signIn(signInDto: SignInDto) {
-    // TODO: implementar login
-    throw new Error('Method not implemented.');
+  async signIn(signInDto: SignInDto) {
+    try {
+      const { email, password } = signInDto;
+
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user) {
+        throw new RpcException({
+          status: HttpStatus.UNAUTHORIZED,
+          messages: ['Credenciales inválidas'],
+        });
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+
+      if (!isPasswordValid) {
+        throw new RpcException({
+          status: HttpStatus.UNAUTHORIZED,
+          messages: ['Credenciales inválidas'],
+        });
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...userWithoutPassword } = user;
+
+      const token = await this.jwtService.signAsync(userWithoutPassword);
+
+      return { user: userWithoutPassword, token };
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+
+      throw new RpcException({
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        messages: [error instanceof Error ? error.message : 'Error al iniciar sesión'],
+      });
+    }
   }
 
   verify(data: any) {
