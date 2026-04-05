@@ -93,8 +93,41 @@ export class AuthService {
     }
   }
 
-  verify(data: any) {
-    // TODO: implementar verificacion de token JWT
-    throw new Error('Method not implemented.');
+  async verify(data: { token: string }) {
+    try {
+      const { token } = data;
+
+      if (!token) {
+        throw new RpcException({
+          status: HttpStatus.UNAUTHORIZED,
+          messages: ['Token no proporcionado'],
+        });
+      }
+
+      const payload = await this.jwtService.verifyAsync(token);
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.id },
+      });
+
+      if (!user) {
+        throw new RpcException({
+          status: HttpStatus.UNAUTHORIZED,
+          messages: ['Usuario no encontrado'],
+        });
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...userWithoutPassword } = user;
+
+      return { user: userWithoutPassword, token };
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+
+      throw new RpcException({
+        status: HttpStatus.UNAUTHORIZED,
+        messages: ['Token inválido o expirado'],
+      });
+    }
   }
 }
